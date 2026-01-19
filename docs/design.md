@@ -292,6 +292,35 @@ flowchart LR
 - `PATCH /api/merchant/templates/{id}` 更新模板
 - `GET /api/merchant/languages` 获取支持语言
 
+## Java + MySQL 云服务落地方案
+
+### 技术栈选择
+- 后端：Java 17 + Spring Boot 3.x
+- 数据库：MySQL 8.0（主从 + 读写分离）
+- 缓存/配置：Redis + 配置中心
+- 消息队列：Kafka / RocketMQ（用于异步发送与事件同步）
+- 对象存储：用于审计导出与报表
+
+### 微服务拆分建议
+- auth-service：登录与 RBAC 权限
+- merchant-service：商户与子账号管理
+- billing-service：余额/计费/账单
+- messaging-service：发送任务与投递记录
+- routing-service：通道路由与故障切换
+- monitoring-service：通道指标与告警
+
+### 云服务部署建议
+- 计算：Kubernetes（多可用区，自动扩缩容）
+- 数据库：MySQL 云托管（主从 + 自动备份）
+- 缓存：Redis 云托管（高可用）
+- 日志/监控：ELK + Prometheus + Grafana
+- CDN：商户后台静态资源分发
+
+### 环境规划
+- dev / staging / prod 三套环境
+- 管理后台与商户后台独立域名
+- API Gateway 统一入口（限流/鉴权/监控）
+
 ## 关键业务流程
 
 ### 消息发送
