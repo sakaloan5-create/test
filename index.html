@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>短信系统后台</title>
+    <base href="./" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  </head>
+  <body>
+    <div id="app" class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="logo">SMS</div>
+          <div>
+            <p class="brand-title">短信平台</p>
+            <p class="brand-sub">运营后台</p>
+          </div>
+        </div>
+        <nav class="menu">
+          <button
+            v-for="item in menus"
+            :key="item"
+            class="menu-item"
+            :class="{ active: currentMenu === item }"
+            @click="currentMenu = item"
+          >
+            {{ item }}
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <p>今日发送成功率</p>
+          <strong>{{ deliveryRate }}%</strong>
+          <div class="progress">
+            <span :style="{ width: deliveryRate + '%' }"></span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <h1>{{ pageTitle }}</h1>
+            <p class="subtitle">欢迎回来，{{ user.name }}。这是短信系统的实时运营状态。</p>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost">导出报告</button>
+            <button class="primary">新建群发</button>
+          </div>
+        </header>
+        <section class="notice">
+          <div>
+            <h3>原型访问提示</h3>
+            <p>若出现 Not Found，请确认使用静态服务器访问根路径 / 。</p>
+          </div>
+          <button class="ghost">查看运行说明</button>
+        </section>
+
+        <section class="stats">
+          <article class="card" v-for="stat in stats" :key="stat.label">
+            <p class="card-label">{{ stat.label }}</p>
+            <h2>{{ stat.value }}</h2>
+            <p class="card-trend" :class="stat.trend > 0 ? 'up' : 'down'">
+              {{ stat.trend > 0 ? '▲' : '▼' }} {{ Math.abs(stat.trend) }}%
+              <span>较昨日</span>
+            </p>
+          </article>
+        </section>
+
+        <section class="grid">
+          <article class="panel">
+            <header>
+              <h3>双后台系统概览</h3>
+              <button class="link">查看架构</button>
+            </header>
+            <div class="backend-grid">
+              <div class="backend-card">
+                <p class="card-label">全球业务管理后台</p>
+                <h4>管控中心</h4>
+                <ul class="list">
+                  <li>商户/权限管理</li>
+                  <li>通道配置与监控</li>
+                  <li>价格策略与审计</li>
+                </ul>
+              </div>
+              <div class="backend-card">
+                <p class="card-label">商户运营后台</p>
+                <h4>多语言门户</h4>
+                <ul class="list">
+                  <li>消息发送与回执</li>
+                  <li>余额/账单中心</li>
+                  <li>模板与子账号</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+          <article class="panel">
+            <header>
+              <h3>商户后台语言</h3>
+            </header>
+            <p class="muted">根据登录 IP 自动切换语言，也可手动选择。</p>
+            <div class="language-switch">
+              <button
+                v-for="lang in languages"
+                :key="lang"
+                class="action"
+                :class="{ active: currentLanguage === lang }"
+                @click="currentLanguage = lang"
+              >
+                {{ lang }}
+              </button>
+            </div>
+            <div class="language-preview">
+              <div>
+                <p class="card-label">当前语言</p>
+                <h4>{{ currentLanguage }}</h4>
+              </div>
+              <div>
+                <p class="card-label">IP 识别语言</p>
+                <h4>{{ ipLanguage }}</h4>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="grid">
+          <article class="panel">
+            <header>
+              <h3>待审核模板</h3>
+              <button class="link">查看模板库</button>
+            </header>
+            <ul class="ticket-list">
+              <li v-for="template in templates" :key="template.id">
+                <div>
+                  <p class="ticket-title">{{ template.title }}</p>
+                  <p class="ticket-meta">{{ template.owner }} · {{ template.createdAt }}</p>
+                </div>
+                <span class="status" :class="template.status">
+                  {{ template.statusLabel }}
+                </span>
+              </li>
+            </ul>
+          </article>
+
+          <article class="panel">
+            <header>
+              <h3>快速操作</h3>
+            </header>
+            <div class="quick-actions">
+              <button v-for="action in actions" :key="action" class="action">
+                {{ action }}
+              </button>
+            </div>
+            <form class="form" @submit.prevent="submitForm">
+              <label>
+                发送主题
+                <input v-model="form.subject" placeholder="请输入主题" required />
+              </label>
+              <label>
+                发送渠道
+                <select v-model="form.channel" required>
+                  <option disabled value="">请选择</option>
+                  <option v-for="channel in channels" :key="channel" :value="channel">
+                    {{ channel }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                优先级
+                <div class="radio-group">
+                  <label v-for="level in priorities" :key="level">
+                    <input
+                      type="radio"
+                      name="priority"
+                      :value="level"
+                      v-model="form.priority"
+                      required
+                    />
+                    {{ level }}
+                  </label>
+                </div>
+              </label>
+              <button class="primary" type="submit">创建发送任务</button>
+              <p v-if="formMessage" class="form-message">{{ formMessage }}</p>
+            </form>
+          </article>
+        </section>
+
+        <section class="panel">
+          <header>
+            <h3>最新发送记录</h3>
+            <button class="link">筛选</button>
+          </header>
+          <table>
+            <thead>
+              <tr>
+                <th>任务</th>
+                <th>类型</th>
+                <th>时间</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="activity in activities" :key="activity.id">
+                <td>
+                  <div class="user">
+                    <span class="avatar">{{ activity.taskCode }}</span>
+                    <div>
+                      <p>{{ activity.task }}</p>
+                      <span class="muted">{{ activity.owner }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ activity.type }}</td>
+                <td>{{ activity.time }}</td>
+                <td>
+                  <span class="badge" :class="activity.status">
+                    {{ activity.statusLabel }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="grid">
+          <article class="panel">
+            <header>
+              <h3>计费与余额监控</h3>
+            </header>
+            <div class="billing">
+              <div>
+                <p class="card-label">当前余额</p>
+                <h3>{{ balance }} {{ currency }}</h3>
+              </div>
+              <div>
+                <p class="card-label">今日扣费</p>
+                <h3>{{ todayDebit }} {{ currency }}</h3>
+              </div>
+              <div>
+                <p class="card-label">短信单价</p>
+                <h3>{{ pricePerSms }} / 条</h3>
+              </div>
+            </div>
+            <div class="billing-actions">
+              <button class="primary">充值</button>
+              <button class="ghost">扣费明细</button>
+            </div>
+          </article>
+          <article class="panel">
+            <header>
+              <h3>通道健康与故障切换</h3>
+            </header>
+            <ul class="ticket-list">
+              <li v-for="channel in channelHealth" :key="channel.name">
+                <div>
+                  <p class="ticket-title">{{ channel.name }}</p>
+                  <p class="ticket-meta">成功率 {{ channel.successRate }} · 延迟 {{ channel.latency }}</p>
+                </div>
+                <span class="status" :class="channel.status">
+                  {{ channel.statusLabel }}
+                </span>
+              </li>
+            </ul>
+            <div class="channel-actions">
+              <button class="ghost">调整优先级</button>
+              <button class="primary">手动切换</button>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
